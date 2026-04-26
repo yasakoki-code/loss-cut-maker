@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>LOSS CUT MAKER MINI - 個人投資家を刈り取るアルゴ</title>
+<style>
+  :root{
+    --bg:#071019;
+    --panel:#111c2b;
+    --panel2:#162337;
+    --line:#2d405e;
+    --text:#e9f1ff;
+    --muted:#9fb0c8;
+    --green:#37d67a;
+    --red:#ff4d5e;
+    --yellow:#ffd166;
+    --blue:#5ca8ff;
+    --purple:#c77dff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:radial-gradient(circle at top,#172943 0%,#071019 56%,#03070d 100%);
+    color:var(--text);
+    min-height:100vh;
+    padding:14px;
+  }
+  .wrap{max-width:1080px;margin:0 auto;}
+  .title{text-align:center;margin:8px 0 14px;}
+  .title h1{margin:0;font-size:28px;letter-spacing:1px;}
+  .title p{margin:6px 0 0;color:var(--muted);font-size:13px;}
+  .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}.title h1{font-size:23px;}}
+  .card{
+    background:rgba(17,28,43,.93);
+    border:1px solid rgba(110,145,190,.25);
+    border-radius:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+    overflow:hidden;
+  }
+  .card h2{
+    margin:0;padding:12px 14px;font-size:15px;
+    border-bottom:1px solid rgba(110,145,190,.22);
+    color:#dceaff;background:rgba(255,255,255,.03);
+  }
+  .inner{padding:12px;}
+  #chart{
+    width:100%;height:330px;background:linear-gradient(180deg,#0b1726,#08111d);
+    border-radius:12px;display:block;touch-action:none;
+  }
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px;}
+  @media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr);}}
+  .stat{
+    background:#0c1624;border:1px solid rgba(110,145,190,.18);
+    border-radius:12px;padding:9px;text-align:center;
+  }
+  .stat .label{color:var(--muted);font-size:11px;}
+  .stat .num{font-size:18px;font-weight:800;margin-top:3px;}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  button{
+    appearance:none;border:0;border-radius:12px;padding:12px 10px;color:white;
+    background:#243852;font-weight:900;font-size:13px;cursor:pointer;
+    box-shadow:0 5px 0 rgba(0,0,0,.25);
+    transition:.08s transform,.08s box-shadow,.15s filter;
+  }
+  button:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25);}
+  button:hover{filter:brightness(1.08);}
+  button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.5);}
+  .b1{background:linear-gradient(135deg,#2f80ed,#56ccf2);}
+  .b2{background:linear-gradient(135deg,#eb5757,#ff8a65);}
+  .b3{background:linear-gradient(135deg,#9b51e0,#bb6bd9);}
+  .b4{background:linear-gradient(135deg,#f2994a,#f2c94c);color:#1c1400;}
+  .b5{background:linear-gradient(135deg,#27ae60,#6fcf97);}
+  .b6{background:linear-gradient(135deg,#2d3436,#636e72);}
+  .ultimate{background:linear-gradient(135deg,#ff006e,#8338ec,#3a86ff);}
+  .wide{grid-column:1/-1;}
+  .barBox{margin:8px 0 12px;}
+  .barTop{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .bar{height:12px;background:#08111d;border:1px solid rgba(110,145,190,.22);border-radius:99px;overflow:hidden;}
+  .fill{height:100%;width:50%;border-radius:99px;transition:.25s width;}
+  .greed{background:linear-gradient(90deg,#ffd166,#ff8a00);}
+  .fear{background:linear-gradient(90deg,#5ca8ff,#ff4d5e);}
+  .hope{background:linear-gradient(90deg,#37d67a,#c77dff);}
+  .trust{background:linear-gradient(90deg,#9fb0c8,#ffffff);}
+  .ultFill{background:linear-gradient(90deg,#ff006e,#8338ec,#3a86ff);}
+  .log{
+    height:250px;overflow:auto;background:#07111e;border:1px solid rgba(110,145,190,.18);
+    border-radius:12px;padding:10px;font-size:12px;line-height:1.55;
+  }
+  .log div{border-bottom:1px dashed rgba(255,255,255,.08);padding:5px 0;}
+  .log b{color:var(--yellow);}
+  .mission,.market,.enemy,.boss{
+    background:#0c1624;border:1px solid rgba(110,145,190,.18);
+    border-radius:12px;padding:10px;font-size:13px;line-height:1.55;margin-bottom:10px;
+  }
+  .boss{border-color:rgba(255,77,94,.45);background:linear-gradient(135deg,rgba(255,77,94,.13),rgba(12,22,36,1));}
+  .market{border-color:rgba(255,209,102,.35);}
+  .enemy{border-color:rgba(92,168,255,.35);}
+  .tag{
+    display:inline-block;padding:3px 7px;border-radius:99px;font-size:11px;
+    font-weight:900;background:rgba(92,168,255,.15);color:#9fd0ff;margin-right:4px;
+  }
+  .rulesTop{margin-bottom:12px;}
+  .rulesGrid{
+    display:grid;grid-template-columns:repeat(5,1fr);gap:8px;
+    font-size:12px;line-height:1.55;color:#c5d4eb;
+  }
+  .rulesGrid p{
+    margin:0;background:#0c1624;border:1px solid rgba(110,145,190,.18);
+    border-radius:12px;padding:10px;
+  }
+  @media(max-width:820px){.rulesGrid{grid-template-columns:1fr;}}
+  .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media(max-width:560px){.miniGrid{grid-template-columns:1fr;}}
+  .small{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px;}
+  .footer{text-align:center;color:var(--muted);font-size:11px;margin:12px 0 4px;}
+  .overlay{
+    position:fixed;inset:0;background:rgba(2,6,12,.86);
+    display:flex;align-items:center;justify-content:center;padding:18px;z-index:10;
+  }
+  .modal{
+    max-width:620px;width:100%;background:#101b2b;border:1px solid rgba(140,180,230,.3);
+    border-radius:20px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.55);
+  }
+  .modal h2{margin:0 0 8px;font-size:24px;}
+  .modal p{color:#c5d4eb;line-height:1.7;font-size:14px;}
+  .modal button{width:100%;font-size:16px;margin-top:8px;}
+  .cmdHelp{font-size:10px;font-weight:600;opacity:.86;display:block;margin-top:2px;}
+
+  /* Compact one-screen smartphone layout */
+  body{
+    padding:8px;
+    overflow-x:hidden;
+  }
+  .wrap{
+    max-width:760px;
+  }
+  .title{
+    margin:2px 0 6px;
+  }
+  .title h1{
+    font-size:20px;
+    line-height:1.05;
+  }
+  .title p{
+    display:none;
+  }
+  .card{
+    border-radius:12px;
+  }
+  .card h2{
+    padding:7px 9px;
+    font-size:12px;
+  }
+  .inner{
+    padding:7px;
+  }
+  .rulesTop{
+    margin-bottom:7px;
+  }
+  .rulesGrid{
+    grid-template-columns:repeat(5,1fr);
+    gap:5px;
+    font-size:10px;
+    line-height:1.28;
+  }
+  .rulesGrid p{
+    padding:6px;
+    min-height:45px;
+  }
+  .tag{
+    font-size:9px;
+    padding:2px 5px;
+    margin-right:2px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:7px;
+  }
+  #chart{
+    height:160px;
+    border-radius:10px;
+  }
+  .stats{
+    grid-template-columns:repeat(5,1fr);
+    gap:4px;
+    margin-top:6px;
+  }
+  .stat{
+    border-radius:9px;
+    padding:5px 3px;
+  }
+  .stat .label{
+    font-size:9px;
+  }
+  .stat .num{
+    font-size:13px;
+    margin-top:1px;
+  }
+  #rank{
+    font-size:9px !important;
+    line-height:1.15;
+  }
+  .mission,.market,.enemy,.boss{
+    padding:6px;
+    font-size:10px;
+    line-height:1.35;
+    margin-bottom:5px;
+    border-radius:9px;
+  }
+  .barBox{
+    margin:4px 0 5px;
+  }
+  .barTop{
+    font-size:10px;
+    margin-bottom:2px;
+  }
+  .bar{
+    height:8px;
+  }
+  .actions{
+    grid-template-columns:repeat(3,1fr);
+    gap:5px;
+  }
+  button{
+    padding:7px 4px;
+    border-radius:9px;
+    font-size:10px;
+    line-height:1.15;
+    box-shadow:0 3px 0 rgba(0,0,0,.25);
+  }
+  .cmdHelp{
+    display:none;
+  }
+  .wide{
+    grid-column:span 3;
+  }
+  .ultimate{
+    grid-column:span 3;
+  }
+  .log{
+    height:120px;
+    padding:6px;
+    font-size:10px;
+    line-height:1.35;
+    border-radius:9px;
+  }
+  .log div{
+    padding:3px 0;
+  }
+  .miniGrid{
+    display:none;
+  }
+  .footer{
+    display:none;
+  }
+  .overlay{
+    padding:10px;
+  }
+  .modal{
+    border-radius:16px;
+    padding:14px;
+  }
+  .modal h2{
+    font-size:21px;
+  }
+  .modal p{
+    font-size:13px;
+    line-height:1.55;
+  }
+
+  @media(max-width:820px){
+    body{
+      padding:6px;
+    }
+    .rulesGrid{
+      grid-template-columns:repeat(5,1fr);
+    }
+  }
+  @media(max-width:520px){
+    .rulesGrid{
+      grid-template-columns:repeat(5,1fr);
+    }
+    .rulesGrid p{
+      font-size:9px;
+      padding:5px 3px;
+      min-height:42px;
+    }
+    .rulesGrid p:nth-child(3),
+    .rulesGrid p:nth-child(4),
+    .rulesGrid p:nth-child(5){
+      display:none;
+    }
+    .rulesGrid{
+      grid-template-columns:repeat(2,1fr);
+    }
+    .rulesGrid p:nth-child(2){
+      display:block;
+    }
+    .grid{
+      gap:6px;
+    }
+    #chart{
+      height:135px;
+    }
+    .stats{
+      grid-template-columns:repeat(5,1fr);
+    }
+    .stat .num{
+      font-size:12px;
+    }
+    .mission{
+      display:none;
+    }
+    .market,.enemy,.boss{
+      font-size:10px;
+      margin-bottom:4px;
+    }
+    .barBox{
+      margin:3px 0 4px;
+    }
+    .actions{
+      gap:4px;
+    }
+    button{
+      font-size:10px;
+      padding:7px 2px;
+    }
+    .log{
+      height:105px;
+    }
+  }
+
+
+  .controlCard{order:1;}
+  .chartCard{order:2;}
+  .logCard{order:3;}
+  .infoCard{order:4;}
+  @media(max-width:820px){
+    .infoCard{display:none;}
+  }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="title">
+    <h1>LOSS CUT MAKER EX</h1>
+    <p>100万円単位で1000億を目指す版</p>
+  </div>
+
+  <div class="card rulesTop">
+    <h2>ルール</h2>
+    <div class="inner rulesGrid">
+      <p><span class="tag">目的</span>HPを削って利益を稼ぐ。100万円単位で増え、最大1000億。</p>
+      <p><span class="tag">ステージ</span>難易度。上がるほど大きく儲かるが罠も効きにくい。</p>
+      <p><span class="tag">読み合い</span>個人タイプと相場カードを見て、刺さるコマンドを選ぶ。</p>
+      <p><span class="tag">注意</span>同じコマンド連打は効果ダウン。資金0でアルゴ停止。</p>
+      <p><span class="tag">必殺技</span>ゲージ100で発動。大損切り連鎖で一気に利益を伸ばす。</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card chartCard">
+      <h2>チャート</h2>
+      <div class="inner">
+        <canvas id="chart" width="760" height="220"></canvas>
+        <div class="stats">
+          <div class="stat"><div class="label">ステージ</div><div class="num" id="stage">1</div></div>
+          <div class="stat"><div class="label">利益</div><div class="num" id="score">0万円</div></div>
+          <div class="stat"><div class="label">個人残HP</div><div class="num" id="hp">100</div></div>
+          <div class="stat"><div class="label">資金</div><div class="num" id="fund">100</div></div>
+          <div class="stat"><div class="label">称号</div><div class="num" id="rank" style="font-size:13px;">刈り取り初心者</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card controlCard">
+      <h2>アルゴ操作盤</h2>
+      <div class="inner">
+        <div class="mission" id="mission"></div>
+        <div class="market" id="market"></div>
+        <div class="enemy" id="enemy"></div>
+        <div class="boss" id="bossBox" style="display:none;"></div>
+
+        <div class="barBox">
+          <div class="barTop"><span>欲望</span><span id="greedTxt">50</span></div>
+          <div class="bar"><div class="fill greed" id="greedFill"></div></div>
+        </div>
+        <div class="barBox">
+          <div class="barTop"><span>恐怖</span><span id="fearTxt">50</span></div>
+          <div class="bar"><div class="fill fear" id="fearFill"></div></div>
+        </div>
+        <div class="barBox">
+          <div class="barTop"><span>祈り</span><span id="hopeTxt">50</span></div>
+          <div class="bar"><div class="fill hope" id="hopeFill"></div></div>
+        </div>
+        <div class="barBox">
+          <div class="barTop"><span>テクニカル信仰</span><span id="trustTxt">50</span></div>
+          <div class="bar"><div class="fill trust" id="trustFill"></div></div>
+        </div>
+        <div class="barBox">
+          <div class="barTop"><span>必殺技ゲージ</span><span id="ultTxt">0</span></div>
+          <div class="bar"><div class="fill ultFill" id="ultFill"></div></div>
+        </div>
+
+        <div class="actions">
+          <button class="b1" onclick="act('breakout')">急騰させる<span class="cmdHelp">一気に上げる</span></button>
+          <button class="b2" onclick="act('dump')">下げる<span class="cmdHelp">じわじわ弱くする</span></button>
+          <button class="b3" onclick="act('sanzon')">空売りを誘う<span class="cmdHelp">売りを集める</span></button>
+          <button class="b4" onclick="act('badnews')">逆噴射<span class="cmdHelp">予想と逆へ動かす</span></button>
+          <button class="b5" onclick="act('ita')">上げる<span class="cmdHelp">じわじわ強くする</span></button>
+          <button class="b6" onclick="act('lowerwick')">急落させる<span class="cmdHelp">一気に落とす</span></button>
+          <button class="ultimate wide" id="ultBtn" onclick="ultimate()">必殺技：連売り爆弾</button>
+          <button class="wide" onclick="nextTurn()">様子見</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card logCard">
+      <h2>ログ</h2>
+      <div class="inner">
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <div class="card infoCard">
+      <h2>個人投資家タイプ & 相場カード</h2>
+      <div class="inner miniGrid" style="font-size:12px;line-height:1.65;color:#c5d4eb;">
+        <div class="mission">
+          <b>タイプ例</b><br>
+          初心者イナゴ：急騰に弱い<br>
+          ナンピン祈祷師：恐怖MAXで崩れる<br>
+          テクニカル信者：形に釣られる<br>
+          空売りマン：焼き上げに弱い<br>
+          冷静な勝ち組個人：全体的に硬い
+        </div>
+        <div class="market">
+          <b>相場カード例</b><br>
+          指数爆上げ：欲望UP<br>
+          地合い最悪：恐怖UP<br>
+          SNS煽り拡散：イナゴ増加<br>
+          売り禁発動：焼き上げ強化<br>
+          出来高急増：全体成功率UP
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">※これは架空の教育・風刺ゲームです。現実の相場操作や不正行為を推奨するものではありません。</div>
+</div>
+
+<div class="overlay" id="start">
+  <div class="modal">
+    <h2>LOSS CUT MAKER EX</h2>
+    <p>
+      あなたは架空のアルゴAI。<br>
+      個人投資家タイプと相場カードを読み、100万円単位で利益を積み上げろ。<br>
+      同じ罠の連打は見抜かれる。必殺技ゲージを貯めてボス個人を刈り取れ。
+    </p>
+    <button class="b1" onclick="startGame()">ゲーム開始</button>
+    <div class="small">スマホでも遊べます。現実の相場操作ではなく、株あるあるを学ぶ風刺ゲームです。</div>
+  </div>
+</div>
+
+<script>
+let state = {
+  stage:1, score:0, profit:0, hp:100, fund:100, ult:0,
+  greed:45, fear:35, hope:45, trust:45,
+  price:100, turn:0, lastAction:null, repeat:0,
+  candles:[], market:null, enemy:null, boss:false
+};
+
+const missions = [
+  "Stage 1：ランキング入りした低位株。初心者が多く、急騰やすい。",
+  "Stage 2：決算ギャンブル相場。好材料・悪材料の逆噴射で混乱しやすい。",
+  "Stage 3：貸借踏み上げ相場。空売り勢と買い方の読み合いが激化。",
+  "Stage 4：SNS煽り相場。Xと掲示板の熱狂で個人の心理が荒れる。",
+  "Stage 5：仕手株最終局面。S高剥がれ、連売り、特大材料、全部入り。"
+];
+
+const enemies = [
+  {name:"初心者イナゴ", desc:"高値更新・出来高急増・ランキング入りに弱い。", weak:["breakout"], resist:["dump"], mod:{greed:15,fear:-5,hope:5,trust:0}},
+  {name:"ナンピン祈祷師", desc:"下落しても祈る。恐怖が溜まると一気に崩れる。", weak:["dump","lowerwick"], resist:["breakout"], mod:{greed:0,fear:5,hope:18,trust:-5}},
+  {name:"テクニカル信者", desc:"三尊、VWAP、移動平均線など教科書パターンに反応する。", weak:["sanzon","dump"], resist:["ita"], mod:{greed:0,fear:0,hope:0,trust:20}},
+  {name:"空売りマン", desc:"悪材料・三尊を見るとすぐ売る。踏み上げに弱い。", weak:["badnews","sanzon"], resist:["lowerwick"], mod:{greed:-5,fear:8,hope:-5,trust:12}},
+  {name:"掲示板煽られ民", desc:"『明日S高』『大口いる』に弱い。", weak:["breakout","ita"], resist:["badnews"], mod:{greed:22,fear:-2,hope:10,trust:6}},
+  {name:"冷静な勝ち組個人", desc:"ロット小さい、損切り早い、板を信じない。かなり硬い。", weak:["lowerwick"], resist:["breakout","ita","sanzon"], mod:{greed:-10,fear:-8,hope:-10,trust:-8}, armor:10}
+];
+
+const bosses = [
+  {name:"全力初心者イナゴ", desc:"高値更新を見ると全力。急騰させるが刺さる。", weak:["breakout"], armor:4},
+  {name:"決算ギャンブラー", desc:"決算後の逆噴射に翻弄される。焼き上げるが刺さる。", weak:["badnews"], armor:6},
+  {name:"空売り職人", desc:"売り目線が強い。踏み上げと三尊トラップが刺さる。", weak:["badnews","sanzon"], armor:8},
+  {name:"X煽り耐性マン", desc:"煽りには強いが、板と下ひげで迷う。", weak:["ita","lowerwick"], armor:10},
+  {name:"冷静な専業トレーダー", desc:"無理に入らない。様子見を挟んで油断させないと硬い。", weak:["lowerwick"], armor:14}
+];
+
+const markets = [
+  {name:"指数爆上げ", desc:"全面高で個人の欲望が膨らむ。", boost:["breakout"], mod:{greed:14,fear:-8,hope:3,trust:0}},
+  {name:"地合い最悪", desc:"指数が弱く、投げと恐怖が出やすい。", boost:["dump","lowerwick"], mod:{greed:-8,fear:16,hope:-3,trust:0}},
+  {name:"SNS煽り拡散", desc:"Xと掲示板で『大口いる』が増える。", boost:["breakout","ita"], mod:{greed:18,fear:-3,hope:9,trust:5}},
+  {name:"売り禁発動", desc:"空売り勢が逃げづらく、踏み上げが強い。", boost:["badnews"], mod:{greed:6,fear:8,hope:0,trust:6}},
+  {name:"出来高急増", desc:"参加者が増えて、どの罠も刺さりやすい。", boost:["all"], mod:{greed:8,fear:8,hope:4,trust:4}},
+  {name:"決算翌日", desc:"好悪材料の解釈が割れて、逆噴射が起きやすい。", boost:["badnews","dump"], mod:{greed:5,fear:11,hope:3,trust:-4}},
+  {name:"閑散相場", desc:"参加者が少なく、罠の効きが鈍い。", boost:[], mod:{greed:-6,fear:-4,hope:0,trust:-3}, penalty:8}
+];
+
+const quotes = [
+  "個人「押し目だろこれ」",
+  "個人「売らされたわ…」",
+  "個人「なんで俺が切った瞬間上がるん？」",
+  "個人「大口いるぞこれ」",
+  "個人「もう二度と株やらん」",
+  "個人「三尊だから売りで勝ち確」",
+  "個人「損切りライン？まだ大丈夫」",
+  "個人「明日S高あるやろ」",
+  "個人「この下ひげは強い」",
+  "個人「ロット落とした瞬間だけ勝てる」",
+  "個人「板厚いから安心」",
+  "個人「悪材料出尽くしきた」",
+  "個人「ここで売るやつセンスない」",
+  "個人「俺だけ見えてる」"
+];
+
+const ultimateNames = ["連売り爆弾","逆日歩パニック","特大材料","上場廃止","売り禁発動"];
+
+function clamp(n){ return Math.max(0, Math.min(100,n)); }
+function formatMoney(units){
+  // units = 100万円単位。100 units = 1億円。最大1000億円。
+  units = Math.max(0, Math.min(100000, Math.floor(units)));
+  if(units === 0) return "0万円";
+  if(units < 100){
+    return (units * 100) + "万円";
+  }
+  let oku = units / 100;
+  if(oku >= 1000) return "1000億";
+  if(oku < 10 && units % 100 !== 0) return oku.toFixed(2).replace(/\.?0+$/,"") + "億";
+  if(oku < 100 && units % 10 !== 0) return oku.toFixed(1).replace(/\.?0+$/,"") + "億";
+  return Math.floor(oku) + "億";
+}
+function addProfit(amountUnits){
+  // 100万円単位で増える。最大1000億。
+  state.profit = Math.max(0, Math.min(100000, state.profit + Math.floor(amountUnits)));
+  state.score = state.profit; // 内部互換用
+}
+
+function r(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function pick(arr){ return arr[r(0, arr.length-1)]; }
+
+function initCandles(){
+  state.candles=[];
+  let p=state.price;
+  for(let i=0;i<40;i++){
+    let open=p, close=open+r(-4,5);
+    let high=Math.max(open,close)+r(1,6), low=Math.min(open,close)-r(1,6);
+    state.candles.push({open,high,low,close});
+    p=close;
+  }
+  state.price=p;
+}
+
+function startGame(){
+  document.getElementById("start").style.display="none";
+  initCandles();
+  newTurnContext(true);
+  log("<b>起動</b>：アルゴAI、寄り付きました。個人タイプと相場カードを解析中。");
+  update();
+}
+
+function newTurnContext(force=false){
+  if(force || state.turn % 3 === 0){
+    state.market = pick(markets);
+    applyMod(state.market.mod);
+    log("<b>相場カード</b>：" + state.market.name + " - " + state.market.desc);
+  }
+  if(force || state.turn % 4 === 0){
+    state.enemy = pick(enemies);
+    applyMod(state.enemy.mod);
+    log("<b>個人タイプ</b>：" + state.enemy.name + " - " + state.enemy.desc);
+  }
+}
+
+function applyMod(mod){
+  state.greed=clamp(state.greed+(mod.greed||0));
+  state.fear=clamp(state.fear+(mod.fear||0));
+  state.hope=clamp(state.hope+(mod.hope||0));
+  state.trust=clamp(state.trust+(mod.trust||0));
+}
+
+function addCandle(move, vol=1, wick=false){
+  let open=state.price;
+  let close=open + move + r(-2,2);
+  let high=Math.max(open,close)+r(1,5)*vol;
+  let low=Math.min(open,close)-r(1,5)*vol;
+  if(wick) low -= r(14,26);
+  state.candles.push({open, high, low, close});
+  if(state.candles.length>48) state.candles.shift();
+  state.price=close;
+}
+
+
+function calcProfit(damage){
+  // 1 unit = 100万円。
+  // 序盤は数百万円〜数千万円、後半や必殺技で億単位に伸びる設計。
+  // 100億到達は簡単ではないが、上振れすれば狙える。
+  let base = damage * (1.6 + state.stage * 0.95);
+  if(state.stage >= 3) base *= 1.25;
+  if(state.stage >= 5) base *= 1.45;
+  if(state.boss) base *= 1.55;
+  if(state.market && state.market.name==="出来高急増") base *= 1.25;
+  if(state.market && state.market.name==="閑散相場") base *= 0.55;
+  return Math.max(1, base);
+}
+
+function baseDamage(type){
+  let d = 0;
+  if(type==="breakout") d = state.greed*.36 + state.trust*.12 + r(0,13);
+  if(type==="dump") d = state.fear*.36 + state.hope*.13 + r(0,13);
+  if(type==="sanzon") d = state.trust*.42 + state.fear*.07 + r(0,15);
+  if(type==="badnews") d = state.fear*.24 + (100-state.greed)*.10 + state.trust*.08 + r(4,18);
+  if(type==="ita") d = state.trust*.18 + state.greed*.13 + state.hope*.08 + r(2,11);
+  if(type==="lowerwick") d = state.fear*.27 + state.hope*.18 + r(5,17);
+  return Math.floor(d);
+}
+
+function actionText(type){
+  return {
+    breakout:"一気に急騰させた。個人が『乗り遅れる！』で飛びついた。",
+    dump:"じわじわ下げた。含み損勢が『これ弱いかも…』と不安になる。",
+    sanzon:"下がりそうな形を作った。空売り勢が集まり始める。",
+    badnews:"予想と逆に動かした。売った人も買った人も判断がバグる。",
+    ita:"じわじわ上げた。個人が『まだ上がる』と思い始める。",
+    lowerwick:"一気に急落させた。狼狽売りと損切りが連鎖する。"
+  }[type];
+}
+
+function actionMove(type){
+  if(type==="breakout") return r(5,12);
+  if(type==="dump") return -r(6,14);
+  if(type==="sanzon") return r(-3,8);
+  if(type==="badnews") return r(4,13);
+  if(type==="ita") return r(3,9);
+  if(type==="lowerwick") return -r(10,18);
+  return 0;
+}
+
+function act(type){
+  if(state.fund<=0 || state.hp<=0) return;
+  state.turn++;
+
+  let cost = {breakout:8,dump:9,sanzon:11,badnews:12,ita:6,lowerwick:10}[type];
+  let damage = baseDamage(type);
+  let notes = [];
+
+  // same command penalty
+  if(state.lastAction === type) state.repeat++;
+  else state.repeat=0;
+  state.lastAction=type;
+  if(state.repeat>=1){
+    let penalty = state.repeat*8;
+    damage -= penalty;
+    notes.push("連打警戒 -" + penalty);
+  }
+
+  // enemy weakness/resistance
+  if(state.enemy){
+    if(state.enemy.weak.includes(type)){ damage += 18; notes.push(state.enemy.name+"に刺さった +18"); }
+    if(state.enemy.resist.includes(type)){ damage -= 12; notes.push(state.enemy.name+"に読まれた -12"); }
+    if(state.enemy.armor){ damage -= state.enemy.armor; notes.push("冷静耐性 -" + state.enemy.armor); }
+  }
+
+  // market boost
+  if(state.market){
+    if(state.market.boost.includes(type) || state.market.boost.includes("all")){ damage += 14; notes.push(state.market.name+"追い風 +14"); }
+    if(state.market.penalty){ damage -= state.market.penalty; notes.push("閑散ペナルティ -" + state.market.penalty); }
+  }
+
+  // stage resistance
+  let resistance = state.stage*3;
+  damage -= resistance;
+  notes.push("Stage耐性 -" + resistance);
+
+  // boss
+  if(state.boss){
+    let b=bosses[state.stage-1];
+    damage -= b.armor;
+    notes.push("ボス耐性 -" + b.armor);
+    if(b.weak.includes(type)){ damage += 20; notes.push("ボス弱点 +20"); }
+  }
+
+  damage=Math.max(0, Math.floor(damage));
+  state.hp=clamp(state.hp-damage);
+  state.fund=clamp(state.fund-cost+Math.floor(damage/5));
+  let profitGain = calcProfit(damage);
+  addProfit(profitGain);
+  state.ult=clamp(state.ult + Math.floor(damage/2) + 8);
+
+  // psychology changes
+  if(type==="breakout"){ state.greed=clamp(state.greed+12); state.fear=clamp(state.fear+5); state.hope=clamp(state.hope+4); }
+  if(type==="dump"){ state.fear=clamp(state.fear+15); state.greed=clamp(state.greed-8); state.hope=clamp(state.hope+8); }
+  if(type==="sanzon"){ state.trust=clamp(state.trust+14); state.fear=clamp(state.fear+4); }
+  if(type==="badnews"){ state.fear=clamp(state.fear+10); state.trust=clamp(state.trust-5); }
+  if(type==="ita"){ state.trust=clamp(state.trust+8); state.greed=clamp(state.greed+5); }
+  if(type==="lowerwick"){ state.fear=clamp(state.fear+8); state.hope=clamp(state.hope+9); state.greed=clamp(state.greed+4); }
+
+  addCandle(actionMove(type), type==="lowerwick" ? 2 : 1, false);
+  log("<b>発動</b>：" + actionText(type) + " <span style='color:#ffcf66'>損切りダメージ " + damage + " / 利益 +" + formatMoney(profitGain) + "</span>");
+  if(notes.length) log("<b>判定</b>：" + notes.join(" / "));
+  if(Math.random()<.78) log(pick(quotes));
+
+  if(state.turn % 5 === 0){
+    log("<b>警戒</b>：冷静な個人『同じ罠っぽいのでロット落とします』");
+  }
+
+  checkStage();
+  newTurnContext();
+  update();
+}
+
+function ultimate(){
+  if(state.ult<100 || state.fund<=0 || state.hp<=0) return;
+  state.turn++;
+  let name = ultimateNames[(state.stage-1)%ultimateNames.length];
+  let damage = r(35,60) + state.stage*5;
+  let cost = 18;
+
+  if(name==="連売り爆弾"){
+    // 恐怖MAX。狼狽売りを誘う
+    damage += 8;
+    state.fear=clamp(state.fear+32);
+    state.hope=clamp(state.hope-10);
+    state.greed=clamp(state.greed-12);
+    addCandle(-r(22,34),4,false);
+  }
+  if(name==="逆日歩パニック"){
+    // 空売り勢をビビらせて買い戻し
+    damage += 12;
+    state.fear=clamp(state.fear+22);
+    state.trust=clamp(state.trust+12);
+    state.greed=clamp(state.greed+8);
+    addCandle(r(18,30),3,false);
+  }
+  if(name==="特大材料"){
+    // 欲望MAX。飛びつき買いを誘う
+    damage += 10;
+    state.greed=clamp(state.greed+35);
+    state.hope=clamp(state.hope+22);
+    state.fear=clamp(state.fear-12);
+    addCandle(r(22,36),4,false);
+  }
+  if(name==="上場廃止"){
+    // 恐怖・絶望MAX。超危険イベント
+    damage += 18;
+    state.fear=clamp(state.fear+40);
+    state.hope=clamp(state.hope-25);
+    state.greed=clamp(state.greed-25);
+    state.trust=clamp(state.trust-15);
+    addCandle(-r(30,46),5,false);
+  }
+  if(name==="売り禁発動"){
+    // 空売り勢が逃げにくくなり踏み上げ期待
+    damage += 14;
+    state.fear=clamp(state.fear+18);
+    state.greed=clamp(state.greed+20);
+    state.trust=clamp(state.trust+16);
+    addCandle(r(20,34),4,false);
+  }
+
+  if(state.boss){
+    damage += 18;
+  }
+
+  state.ult=0;
+  state.fund=clamp(state.fund-cost+Math.floor(damage/4));
+  state.hp=clamp(state.hp-damage);
+  let profitGain = calcProfit(damage) * 1.65;
+  addProfit(profitGain);
+  log("<b>必殺技</b>：" + name + " 発動！ <span style='color:#ff69b4'>大ダメージ " + damage + " / 利益 +" + formatMoney(profitGain) + "</span>");
+  log(pick(quotes));
+  checkStage();
+  newTurnContext();
+  update();
+}
+
+function nextTurn(){
+  if(state.fund<=0 || state.hp<=0) return;
+  state.turn++;
+  state.fund=clamp(state.fund+6);
+  state.ult=clamp(state.ult+5);
+  state.greed=clamp(state.greed+r(-3,5));
+  state.fear=clamp(state.fear+r(-4,4));
+  state.hope=clamp(state.hope+r(-3,5));
+  state.trust=clamp(state.trust+r(-2,4));
+  state.repeat=0;
+  addCandle(r(-4,5),1);
+  log("<b>様子見</b>：資金を温存。個人は勝手に妄想を膨らませている。");
+  if(state.boss && bosses[state.stage-1].name==="冷静な専業トレーダー"){
+    state.hp=clamp(state.hp-8);
+    log("<b>油断</b>：冷静な専業が少し前のめりになった。ボスHP -8");
+  }
+  newTurnContext();
+  update();
+}
+
+function checkStage(){
+  if(state.hp<=0){
+    if(state.stage>=5){
+      log("<b>完全勝利</b>：仕手株最終局面を制圧。");
+      setTimeout(()=>showEnd("完全勝利！", "最終ステージクリア。称号：" + titleRank() + "<br>利益：" + state.score), 300);
+      return;
+    }
+    state.stage++;
+    state.boss=false;
+    state.hp=100+state.stage*13;
+    state.greed=clamp(40+state.stage*8);
+    state.fear=clamp(30+state.stage*6);
+    state.hope=clamp(45+state.stage*4);
+    state.trust=clamp(45+state.stage*5);
+    state.fund=clamp(state.fund+30);
+    state.ult=clamp(state.ult+20);
+    log("<b>ステージクリア</b>：次の相場へ移行。難易度が上がった。");
+  } else {
+    // boss appears below 35% hp once per stage
+    let threshold=(100+state.stage*13)*0.38;
+    if(!state.boss && state.hp <= threshold){
+      state.boss=true;
+      let b=bosses[state.stage-1];
+      state.hp=clamp(state.hp + 35);
+      log("<b>ボス出現</b>：" + b.name + " - " + b.desc + " HPが少し回復した。");
+    }
+  }
+  if(state.fund<=0){
+    setTimeout(()=>showEnd("アルゴ停止", "資金が尽きました。やりすぎると相場にも個人にも見抜かれます。<br>称号：" + titleRank() + "<br>利益：" + state.score), 300);
+  }
+}
+
+function titleRank(){
+  let s=state.score;
+  if(s>=4200) return "アルゴの王";
+  if(s>=3300) return "令和の仕手筋";
+  if(s>=2600) return "損切り製造機";
+  if(s>=1900) return "連売り爆弾職人";
+  if(s>=1300) return "空売り焼却炉";
+  if(s>=850) return "イナゴ調教師";
+  if(s>=450) return "VWAP破壊神";
+  if(s>=180) return "下ひげ職人";
+  return "刈り取り初心者";
+}
+
+function showEnd(title, text){
+  document.getElementById("start").style.display="flex";
+  document.querySelector(".modal h2").textContent=title;
+  document.querySelector(".modal p").innerHTML=text + "<br><br>もう一度遊ぶ場合はリスタート。";
+  document.querySelector(".modal button").textContent="リスタート";
+  document.querySelector(".modal button").onclick=()=>location.reload();
+}
+
+function log(t){
+  const el=document.getElementById("log");
+  const div=document.createElement("div");
+  div.innerHTML=t;
+  el.prepend(div);
+}
+
+function update(){
+  document.getElementById("stage").textContent=state.stage;
+  document.getElementById("score").textContent=formatMoney(state.profit);
+  document.getElementById("hp").textContent=state.hp;
+  document.getElementById("fund").textContent=state.fund;
+  document.getElementById("rank").textContent=titleRank();
+
+  document.getElementById("mission").innerHTML=missions[state.stage-1] || missions[4];
+  document.getElementById("market").innerHTML="<span class='tag'>相場</span><b>"+(state.market?state.market.name:"-")+"</b>｜"+(state.market?state.market.desc:"-");
+  document.getElementById("enemy").innerHTML="<span class='tag'>個人</span><b>"+(state.enemy?state.enemy.name:"-")+"</b>｜"+(state.enemy?state.enemy.desc:"-");
+
+  const bossBox=document.getElementById("bossBox");
+  if(state.boss){
+    let b=bosses[state.stage-1];
+    bossBox.style.display="block";
+    bossBox.innerHTML="<span class='tag'>ボス</span><b>"+b.name+"</b>｜"+b.desc;
+  }else{
+    bossBox.style.display="none";
+  }
+
+  ["greed","fear","hope","trust"].forEach(k=>{
+    document.getElementById(k+"Txt").textContent=state[k];
+    document.getElementById(k+"Fill").style.width=state[k]+"%";
+  });
+  document.getElementById("ultTxt").textContent=state.ult;
+  document.getElementById("ultFill").style.width=state.ult+"%";
+  const ub=document.getElementById("ultBtn");
+  ub.textContent="必殺：" + ultimateNames[(state.stage-1)%ultimateNames.length] + (state.ult<100 ? " "+state.ult+"/100" : " 発動");
+  ub.disabled=state.ult<100;
+  drawChart();
+}
+
+function drawChart(){
+  const c=document.getElementById("chart"), ctx=c.getContext("2d");
+  const w=c.width,h=c.height;
+  ctx.clearRect(0,0,w,h);
+
+  ctx.strokeStyle="rgba(180,210,255,.08)";
+  ctx.lineWidth=1;
+  for(let i=0;i<6;i++){let y=25+i*(h-50)/5;ctx.beginPath();ctx.moveTo(10,y);ctx.lineTo(w-10,y);ctx.stroke();}
+  for(let i=0;i<8;i++){let x=25+i*(w-50)/7;ctx.beginPath();ctx.moveTo(x,10);ctx.lineTo(x,h-20);ctx.stroke();}
+
+  const data=state.candles;
+  const all=data.flatMap(d=>[d.high,d.low]);
+  const max=Math.max(...all)+5, min=Math.min(...all)-5;
+  const yv=v=>20+(max-v)/(max-min)*(h-55);
+  const gap=(w-35)/data.length, cw=Math.max(5,gap*.55);
+
+  ctx.strokeStyle="rgba(255,209,102,.6)";
+  ctx.setLineDash([5,5]);
+  ctx.beginPath();
+  data.forEach((d,i)=>{
+    let avg=(d.open+d.close+d.high+d.low)/4;
+    let x=18+i*gap+gap/2, y=yv(avg);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  });
+  ctx.stroke();ctx.setLineDash([]);
+
+  data.forEach((d,i)=>{
+    const x=18+i*gap+gap/2, up=d.close>=d.open;
+    ctx.strokeStyle=up ? "#37d67a" : "#ff4d5e";
+    ctx.fillStyle=up ? "#37d67a" : "#ff4d5e";
+    ctx.beginPath();ctx.moveTo(x,yv(d.high));ctx.lineTo(x,yv(d.low));ctx.stroke();
+    const y1=yv(Math.max(d.open,d.close)), y2=yv(Math.min(d.open,d.close));
+    ctx.fillRect(x-cw/2,y1,cw,Math.max(2,y2-y1));
+  });
+
+  ctx.fillStyle="rgba(255,255,255,.75)";
+  ctx.font="12px -apple-system,BlinkMacSystemFont,sans-serif";
+  ctx.fillText("VWAP", w-62, 24);
+  ctx.fillStyle="rgba(255,255,255,.5)";
+  ctx.fillText("PRICE " + Math.round(state.price), 16, 24);
+}
+
+initCandles();
+update();
+</script>
+</body>
+</html>
